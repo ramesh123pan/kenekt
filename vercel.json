@@ -1,8 +1,10 @@
 {
   "functions": {
-    "api/get-property.js": {
-      "runtime": "nodejs18",
-      "includeFiles": "node_modules/@sparticuz/chromium-min/bin/**"
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    },
+    "api/**/*.php": {
+      "runtime": "now-php@1.0.0"
     }
   }
 }
