@@ -1,16 +1,20 @@
-import puppeteer from "puppeteer";
+import chromium from "chrome-aws-lambda";
+import puppeteer from "puppeteer-core";
 
-// Universal handler for Vercel or local Express
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: "Missing 'url'" });
 
+  let browser = null;
+
   try {
-    const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: true, // change to false if you want to see the browser
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath, // ✅ works on Vercel & local
+      headless: true,
     });
 
     const page = await browser.newPage();
@@ -20,7 +24,6 @@ export default async function handler(req, res) {
 
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
-    // Puppeteer scraping logic
     const propertyData = await page.evaluate(() => {
       const getText = (sel) => document.querySelector(sel)?.innerText.trim() || null;
 
@@ -85,6 +88,7 @@ export default async function handler(req, res) {
     await browser.close();
     res.status(200).json({ source_url: url, ...propertyData });
   } catch (err) {
+    if (browser) await browser.close();
     console.error(err);
     res.status(500).json({ error: err.message });
   }
