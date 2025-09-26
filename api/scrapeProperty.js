@@ -1,18 +1,18 @@
 import puppeteer from "puppeteer";
 
+// Universal handler for Vercel or local Express
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const url = req.query.url;
-  if (!url) return res.status(400).json({ error: "Missing 'url' query parameter" });
+  if (!url) return res.status(400).json({ error: "Missing 'url'" });
 
   try {
     const browser = await puppeteer.launch({
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: true,
+      headless: true, // change to false if you want to see the browser
     });
+
     const page = await browser.newPage();
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
 
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
+    // Puppeteer scraping logic
     const propertyData = await page.evaluate(() => {
       const getText = (sel) => document.querySelector(sel)?.innerText.trim() || null;
 
