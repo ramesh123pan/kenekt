@@ -1,8 +1,11 @@
 import chromium from "chrome-aws-lambda";
 import puppeteer from "puppeteer-core";
+import localPuppeteer from "puppeteer"; // only for local dev
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: "Missing 'url'" });
@@ -10,12 +13,24 @@ export default async function handler(req, res) {
   let browser = null;
 
   try {
-    browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath, // ✅ works on Vercel & local
-      headless: true,
-    });
+    // Decide whether we are running on Vercel or local
+    const isLocal = !process.env.AWS_REGION; // Vercel sets AWS_REGION
+
+    if (isLocal) {
+      // Local → use full puppeteer (it downloads Chromium itself)
+      browser = await localPuppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+    } else {
+      // Vercel → use puppeteer-core + chrome-aws-lambda
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath,
+        headless: true,
+      });
+    }
 
     const page = await browser.newPage();
     await page.setUserAgent(
@@ -24,72 +39,14 @@ export default async function handler(req, res) {
 
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
-    const propertyData = await page.evaluate(() => {
-      const getText = (sel) => document.querySelector(sel)?.innerText.trim() || null;
-
-      const title = getText("h2.text-xl") || getText("h1") || null;
-      const addressNodes = Array.from(document.querySelectorAll("div.text-gray-800.font-medium"));
-      const address = addressNodes[0]?.innerText.trim() || null;
-      const locality = addressNodes[1]?.innerText.trim() || null;
-
-      const priceDisplay = getText("h3.text-xl") || null;
-      const priceValue = priceDisplay ? Number(priceDisplay.replace(/[^0-9.-]+/g, "")) : null;
-
-      const features = Array.from(document.querySelectorAll("ul.inline-flex li")).map((li) => li.innerText.trim());
-
-      const details = {};
-      Array.from(document.querySelectorAll("dl.grid")).forEach((dl) => {
-        const dts = dl.querySelectorAll("dt");
-        const dds = dl.querySelectorAll("dd");
-        dts.forEach((dt, i) => {
-          const key = dt.innerText.trim();
-          const value = (dds[i]?.innerText || "").trim();
-          if (key) details[key] = value || null;
-        });
-      });
-
-      const description = document.querySelector(".lexxy-content")?.innerText.trim() || null;
-      const floorplanImg = document.querySelector("#floorplan img")?.src || null;
-
-      const extractListByHeading = (headingText) => {
-        const headings = Array.from(document.querySelectorAll("h2, h3, h4"));
-        const heading = headings.find(
-          (h) => h.innerText && h.innerText.trim().toLowerCase() === headingText.toLowerCase()
-        );
-        if (!heading) return [];
-
-        let wrapper = heading.closest("div.relative") || heading.closest("section") || heading.parentElement;
-        let ul = wrapper ? wrapper.querySelector("ul") : null;
-
-        if (!ul && wrapper) ul = Array.from(wrapper.querySelectorAll("ul"))[0] || null;
-
-        if (!ul) {
-          let sibling = wrapper ? wrapper.nextElementSibling : null;
-          while (sibling && !sibling.querySelector("ul")) sibling = sibling.nextElementSibling;
-          ul = sibling ? sibling.querySelector("ul") : null;
-        }
-
-        if (!ul) return [];
-        return Array.from(ul.querySelectorAll("li")).map((li) => li.innerText.replace(/\s+/g, " ").trim()).filter(Boolean);
-      };
-
-      const inclusions = extractListByHeading("Inclusions");
-
-      const locationData = Array.from(document.querySelectorAll('[data-map-target="listings"] > div')).map((el) => ({
-        title: el.getAttribute("data-title"),
-        type: el.getAttribute("data-type"),
-        lat: el.getAttribute("data-lat"),
-        lng: el.getAttribute("data-lng"),
-      }));
-
-      return { title, address, locality, priceDisplay, priceValue, features, details, description, inclusions, floorplanImg, locationData };
-    });
+    // Minimal scrape for test
+    const title = await page.$eval("h1, h2.text-xl", (el) => el.innerText);
 
     await browser.close();
-    res.status(200).json({ source_url: url, ...propertyData });
+    return res.status(200).json({ source_url: url, title });
   } catch (err) {
     if (browser) await browser.close();
     console.error(err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
