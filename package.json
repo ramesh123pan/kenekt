@@ -1,9 +1,13 @@
 {
-  "name": "property-scraper",
+  "name": "my-vercel-app",
   "version": "1.0.0",
-  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required'",
+    "start": "vercel dev"
+  },
   "dependencies": {
-    "puppeteer-core": "^24.1.0",
-    "@sparticuz/chromium-min": "^115.0.0"
+    "chrome-aws-lambda": "^20.0.0",
+    "puppeteer-core": "^21.0.0"
   }
 }
