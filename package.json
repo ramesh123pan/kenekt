@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'No build step required'",
-    "start": "vercel dev"
+    "start": "vercel dev",
     "deploy": "vercel --prod --force"
   },
   "dependencies": {
