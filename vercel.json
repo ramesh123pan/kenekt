@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/get-property.js": {
+      "runtime": "nodejs18.x",
+      "includeFiles": "node_modules/@sparticuz/chromium-min/bin/**"
+    }
+  }
+}
