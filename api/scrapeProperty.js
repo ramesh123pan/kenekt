@@ -1,6 +1,5 @@
 import chromium from "chrome-aws-lambda";
 import puppeteer from "puppeteer-core";
-import localPuppeteer from "puppeteer"; // only for local dev
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -13,24 +12,17 @@ export default async function handler(req, res) {
   let browser = null;
 
   try {
-    // Decide whether we are running on Vercel or local
-    const isLocal = !process.env.AWS_REGION; // Vercel sets AWS_REGION
+    const executablePath =
+      process.env.AWS_REGION // <-- Only set on Vercel
+        ? await chromium.executablePath
+        : "/usr/bin/google-chrome"; // Or your local Chrome path
 
-    if (isLocal) {
-      // Local → use full puppeteer (it downloads Chromium itself)
-      browser = await localPuppeteer.launch({
-        headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
-    } else {
-      // Vercel → use puppeteer-core + chrome-aws-lambda
-      browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath,
-        headless: true,
-      });
-    }
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: true,
+    });
 
     const page = await browser.newPage();
     await page.setUserAgent(
@@ -39,7 +31,6 @@ export default async function handler(req, res) {
 
     await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
-    // Minimal scrape for test
     const title = await page.$eval("h1, h2.text-xl", (el) => el.innerText);
 
     await browser.close();
