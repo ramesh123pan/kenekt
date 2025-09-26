@@ -1,4 +1,4 @@
-import chromium from "chrome-aws-lambda";
+import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 
 export default async function handler(req, res) {
@@ -10,12 +10,11 @@ export default async function handler(req, res) {
   let browser = null;
 
   try {
-    // Launch Puppeteer using chrome-aws-lambda
     browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless
     });
 
     const page = await browser.newPage();
@@ -30,21 +29,17 @@ export default async function handler(req, res) {
 
       const title = getText("h2.text-xl") || getText("h1") || null;
 
-      const addressNodes = Array.from(
-        document.querySelectorAll("div.text-gray-800.font-medium")
-      );
+      const addressNodes = Array.from(document.querySelectorAll("div.text-gray-800.font-medium"));
       const address = addressNodes[0]?.innerText.trim() || null;
       const locality = addressNodes[1]?.innerText.trim() || null;
 
       const priceDisplay = getText("h3.text-xl") || null;
       const priceValue = priceDisplay ? Number(priceDisplay.replace(/[^0-9.-]+/g, "")) : null;
 
-      const features = Array.from(document.querySelectorAll("ul.inline-flex li")).map((li) =>
-        li.innerText.trim()
-      );
+      const features = Array.from(document.querySelectorAll("ul.inline-flex li")).map(li => li.innerText.trim());
 
       const details = {};
-      Array.from(document.querySelectorAll("dl.grid")).forEach((dl) => {
+      Array.from(document.querySelectorAll("dl.grid")).forEach(dl => {
         const dts = dl.querySelectorAll("dt");
         const dds = dl.querySelectorAll("dd");
         dts.forEach((dt, i) => {
@@ -59,9 +54,7 @@ export default async function handler(req, res) {
 
       const extractListByHeading = (headingText) => {
         const headings = Array.from(document.querySelectorAll("h2, h3, h4"));
-        const heading = headings.find(
-          (h) => h.innerText && h.innerText.trim().toLowerCase() === headingText.toLowerCase()
-        );
+        const heading = headings.find(h => h.innerText && h.innerText.trim().toLowerCase() === headingText.toLowerCase());
         if (!heading) return [];
 
         let wrapper = heading.closest("div.relative") || heading.closest("section") || heading.parentElement;
@@ -78,18 +71,16 @@ export default async function handler(req, res) {
         }
 
         if (!ul) return [];
-        return Array.from(ul.querySelectorAll("li"))
-          .map((li) => li.innerText.replace(/\s+/g, " ").trim())
-          .filter(Boolean);
+        return Array.from(ul.querySelectorAll("li")).map(li => li.innerText.replace(/\s+/g, " ").trim()).filter(Boolean);
       };
 
       const inclusions = extractListByHeading("Inclusions");
 
-      const locationData = Array.from(document.querySelectorAll('[data-map-target="listings"] > div')).map((el) => ({
+      const locationData = Array.from(document.querySelectorAll('[data-map-target="listings"] > div')).map(el => ({
         title: el.getAttribute("data-title"),
         type: el.getAttribute("data-type"),
         lat: el.getAttribute("data-lat"),
-        lng: el.getAttribute("data-lng"),
+        lng: el.getAttribute("data-lng")
       }));
 
       return {
@@ -103,11 +94,12 @@ export default async function handler(req, res) {
         description,
         inclusions,
         floorplanImg,
-        locationData,
+        locationData
       };
     });
 
     res.status(200).json({ source_url: url, ...propertyData });
+
   } catch (err) {
     console.error("Scrape error:", err);
     res.status(500).json({ error: err.message });
