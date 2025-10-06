@@ -46,7 +46,7 @@ export default async function handler(req, res) {
         const dts = dl.querySelectorAll("dt");
         const dds = dl.querySelectorAll("dd");
         dts.forEach((dt, i) => {
-          const key = dt.innerText.trim().replace(/\s+/g, '_');;
+          const key = dt.innerText.trim().replace(/\s+/g, '_').toLowerCase();
           const value = (dds[i]?.innerText || "").trim();
           if (key) details[key] = value || null;
         });
