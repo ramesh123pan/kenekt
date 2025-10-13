@@ -34,13 +34,36 @@ export default async function handler(req, res) {
 
       const addressNodes = Array.from(document.querySelectorAll("div.text-gray-800.font-medium"));
       const address = addressNodes[0]?.innerText.trim() || null;
-      const locality = addressNodes[1]?.innerText.trim() || null;
+      const locality = addressNodes[1]?.innerText.trim() || null; // e.g., "Sydney, NSW, Australia"
+
+      // --- ADDED LOGIC FOR GEOGRAPHY ---
+      let city_suburb = null;
+      let state = null;
+      let country = null;
+
+      if (locality) {
+        const parts = locality.split(',').map(part => part.trim()).filter(Boolean);
+        
+        // Assuming format is "City/Suburb, State, Country" (or just "City, State")
+        if (parts.length >= 1) {
+          city_suburb = parts[0];
+        }
+        if (parts.length >= 2) {
+          state = parts[1];
+        }
+        // If there are 3 parts, the last one is likely the country
+        if (parts.length >= 3) {
+          country = parts[parts.length - 1];
+        } else if (parts.length === 2 && parts[1].length > 3) {
+          // Heuristic: If only two parts, and the second is long (e.g., "Texas"), treat as state, country is unknown/null
+        }
+      }
+      // --- END ADDED LOGIC FOR GEOGRAPHY ---
 
       const priceDisplay = getText("h3.text-xl") || null;
       const priceValue = priceDisplay ? Number(priceDisplay.replace(/[^0-9.-]+/g, "")) : null;
 
-      // --- ENHANCED STATUS CAPTURE ---
-      // 1. Capture status from the specific badge element provided in the prompt
+      // Status Capture Logic (from previous update)
       let status = getText('turbo-frame[id^="portal_property_status"] div.h5') || null;
       
       const details = {};
@@ -54,15 +77,11 @@ export default async function handler(req, res) {
         });
       });
 
-      // 2. Fallback: Check if 'status' was captured within the 'details' section (dl.grid)
       if (!status) {
           status = details['status'] || details['property_status'] || null;
       }
-
-      // Add the final status to details for consistency
       if (status) details['status'] = status;
-      // --- END ENHANCED STATUS CAPTURE ---
-
+      
       const features = Array.from(document.querySelectorAll("ul.inline-flex li")).map(li => li.innerText.trim());
 
       const description = document.querySelector(".lexxy-content")?.innerText.trim() || null;
@@ -104,10 +123,13 @@ export default async function handler(req, res) {
       return {
         title,
         address,
-        locality,
+        locality, // Keep the raw combined locality for reference
+        city_suburb, // New field
+        state,       // New field
+        country,     // New field
         priceDisplay,
         priceValue,
-        status: finalStatus, // Added top-level status
+        status: finalStatus,
         features,
         details,
         description,
