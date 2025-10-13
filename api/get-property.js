@@ -39,8 +39,10 @@ export default async function handler(req, res) {
       const priceDisplay = getText("h3.text-xl") || null;
       const priceValue = priceDisplay ? Number(priceDisplay.replace(/[^0-9.-]+/g, "")) : null;
 
-      const features = Array.from(document.querySelectorAll("ul.inline-flex li")).map(li => li.innerText.trim());
-
+      // --- ENHANCED STATUS CAPTURE ---
+      // 1. Capture status from the specific badge element provided in the prompt
+      let status = getText('turbo-frame[id^="portal_property_status"] div.h5') || null;
+      
       const details = {};
       Array.from(document.querySelectorAll("dl.grid")).forEach(dl => {
         const dts = dl.querySelectorAll("dt");
@@ -51,6 +53,17 @@ export default async function handler(req, res) {
           if (key) details[key] = value || null;
         });
       });
+
+      // 2. Fallback: Check if 'status' was captured within the 'details' section (dl.grid)
+      if (!status) {
+          status = details['status'] || details['property_status'] || null;
+      }
+
+      // Add the final status to details for consistency
+      if (status) details['status'] = status;
+      // --- END ENHANCED STATUS CAPTURE ---
+
+      const features = Array.from(document.querySelectorAll("ul.inline-flex li")).map(li => li.innerText.trim());
 
       const description = document.querySelector(".lexxy-content")?.innerText.trim() || null;
       const floorplanImg = document.querySelector("#floorplan img")?.src || null;
@@ -85,6 +98,8 @@ export default async function handler(req, res) {
         lat: el.getAttribute("data-lat"),
         lng: el.getAttribute("data-lng")
       }));
+      
+      const finalStatus = status;
 
       return {
         title,
@@ -92,6 +107,7 @@ export default async function handler(req, res) {
         locality,
         priceDisplay,
         priceValue,
+        status: finalStatus, // Added top-level status
         features,
         details,
         description,
