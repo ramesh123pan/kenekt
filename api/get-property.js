@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       const address = addressNodes[0]?.innerText.trim() || null;
       const locality = addressNodes[1]?.innerText.trim() || null; 
 
-      // --- GEOGRAPHY LOGIC ---
+      // --- GEOGRAPHY LOGIC (Confirms correct splitting of locality) ---
       let city_suburb = null;
       let state = null;
       let country = null;
@@ -44,11 +44,11 @@ export default async function handler(req, res) {
       if (locality) {
         const parts = locality.split(',').map(part => part.trim()).filter(Boolean);
         
-        if (parts.length >= 1) city_suburb = parts[0];
-        if (parts.length >= 2) state = parts[1];
-        if (parts.length >= 3) country = parts[parts.length - 1];
+        if (parts.length >= 1) city_suburb = parts[0]; // e.g., ROCHEDALE
+        if (parts.length >= 2) state = parts[1];       // e.g., QLD
+        if (parts.length >= 3) country = parts[parts.length - 1]; // e.g., Australia
       }
-      // --- END ADDED LOGIC FOR GEOGRAPHY ---
+      // --- END GEOGRAPHY LOGIC ---
 
       const priceDisplay = getText("h3.text-xl") || null;
       const priceValue = priceDisplay ? Number(priceDisplay.replace(/[^0-9.-]+/g, "")) : null;
@@ -77,18 +77,15 @@ export default async function handler(req, res) {
       const description = document.querySelector(".lexxy-content")?.innerText.trim() || null;
       
       // ------------------------------------------------------------------
-      // --- CAPTURE IMAGE AND PDF URLS (Updated Logic) ---
+      // --- CAPTURE IMAGE AND PDF URLS ---
       // ------------------------------------------------------------------
       
-      // 1. Floor Plan Image URL
       const floorplanImg = document.querySelector("#floorplan img")?.src || null;
 
-      // 2. Header / Gallery Images: NOW USING THE CORRECT SELECTOR
       const imageGallery = Array.from(document.querySelectorAll('.flex.flex-wrap img'))
           .map(img => img.src)
           .filter(src => src && !src.includes('default-placeholder') && !src.includes('map'));
 
-      // 3. PDF Attachment Link
       const pdfAttachment = document.querySelector('a[href$=".pdf"], a[title*="Brochure"], a[title*="Download"]') 
           ? document.querySelector('a[href$=".pdf"], a[title*="Brochure"], a[title*="Download"]').href
           : null;
@@ -143,7 +140,6 @@ export default async function handler(req, res) {
         description,
         inclusions,
         locationData,
-        // --- RETURNED FILE URLS ---
         gallery_images: imageGallery,
         floorplan_image: floorplanImg,
         pdf_link: pdfAttachment
