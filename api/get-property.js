@@ -30,25 +30,38 @@ export default async function handler(req, res) {
     const propertyData = await page.evaluate(() => {
       const getText = (sel) => document.querySelector(sel)?.innerText.trim() || null;
 
-      const title = getText("h2.text-xl") || getText("h1") || null;
+      const title = getText("h2.text-xl") || getText("h1") || null; // e.g., House in ROCHEDALE, QLD, Australia
 
       const addressNodes = Array.from(document.querySelectorAll("div.text-gray-800.font-medium"));
       const address = addressNodes[0]?.innerText.trim() || null;
       const locality = addressNodes[1]?.innerText.trim() || null; 
 
-      // --- GEOGRAPHY LOGIC (Confirms correct splitting of locality) ---
+      // --- REVISED GEOGRAPHY LOGIC: Prioritizing extraction from Title ---
       let city_suburb = null;
       let state = null;
       let country = null;
 
-      if (title) {
-        const parts = title.split(',').map(part => part.trim()).filter(Boolean);
-        
-        if (parts.length >= 1) city_suburb = parts[0]; // e.g., ROCHEDALE
-        if (parts.length >= 2) state = parts[1];       // e.g., QLD
-        if (parts.length >= 3) country = parts[parts.length - 1]; // e.g., Australia
+      // 1. Try to extract from the Title string
+      if (title && title.toLowerCase().includes(' in ')) {
+          // Find the index of " in " and take the remaining part
+          const locationString = title.slice(title.toLowerCase().indexOf(' in ') + 4).trim();
+          const parts = locationString.split(',').map(part => part.trim()).filter(Boolean);
+
+          if (parts.length >= 1) city_suburb = parts[0];
+          if (parts.length >= 2) state = parts[1];
+          // Take the last element as country, just in case
+          if (parts.length >= 3) country = parts[parts.length - 1]; 
       }
-      // --- END GEOGRAPHY LOGIC ---
+
+      // 2. Fallback: If title extraction failed, use the locality node (original logic)
+      if (!city_suburb && locality) {
+        const parts = locality.split(',').map(part => part.trim()).filter(Boolean);
+        
+        if (parts.length >= 1) city_suburb = parts[0]; 
+        if (parts.length >= 2) state = parts[1];       
+        if (parts.length >= 3) country = parts[parts.length - 1];
+      }
+      // --- END REVISED GEOGRAPHY LOGIC ---
 
       const priceDisplay = getText("h3.text-xl") || null;
       const priceValue = priceDisplay ? Number(priceDisplay.replace(/[^0-9.-]+/g, "")) : null;
@@ -129,9 +142,9 @@ export default async function handler(req, res) {
         title,
         address,
         locality, 
-        city_suburb,
-        state,
-        country,
+        city_suburb, // Extracted from Title (or Locality fallback)
+        state,       // Extracted from Title (or Locality fallback)
+        country,     // Extracted from Title (or Locality fallback)
         priceDisplay,
         priceValue,
         status: finalStatus,
