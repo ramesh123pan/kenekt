@@ -77,20 +77,18 @@ export default async function handler(req, res) {
       const description = document.querySelector(".lexxy-content")?.innerText.trim() || null;
       
       // ------------------------------------------------------------------
-      // --- CAPTURE IMAGE AND PDF URLS (New/Updated Logic) ---
+      // --- CAPTURE IMAGE AND PDF URLS (Updated Logic) ---
       // ------------------------------------------------------------------
       
-      // 1. Floor Plan Image URL (Existing, but kept separate for clarity)
+      // 1. Floor Plan Image URL
       const floorplanImg = document.querySelector("#floorplan img")?.src || null;
 
-      // 2. Header / Gallery Images (Common selectors used - adjust if needed)
-      // This attempts to find image URLs in common gallery/slider elements.
-      const imageGallery = Array.from(document.querySelectorAll('.slick-slide img, .gallery-item img, .property-gallery img'))
+      // 2. Header / Gallery Images: NOW USING THE CORRECT SELECTOR
+      const imageGallery = Array.from(document.querySelectorAll('.flex.flex-wrap img'))
           .map(img => img.src)
           .filter(src => src && !src.includes('default-placeholder') && !src.includes('map'));
 
       // 3. PDF Attachment Link
-      // Looks for a link ending in .pdf OR a link with "Brochure" or "Download" in its title/text
       const pdfAttachment = document.querySelector('a[href$=".pdf"], a[title*="Brochure"], a[title*="Download"]') 
           ? document.querySelector('a[href$=".pdf"], a[title*="Brochure"], a[title*="Download"]').href
           : null;
