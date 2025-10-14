@@ -34,9 +34,9 @@ export default async function handler(req, res) {
 
       const addressNodes = Array.from(document.querySelectorAll("div.text-gray-800.font-medium"));
       const address = addressNodes[0]?.innerText.trim() || null;
-      const locality = addressNodes[1]?.innerText.trim() || null; // e.g., "Sydney, NSW, Australia"
+      const locality = addressNodes[1]?.innerText.trim() || null; 
 
-      // --- ADDED LOGIC FOR GEOGRAPHY ---
+      // --- GEOGRAPHY LOGIC ---
       let city_suburb = null;
       let state = null;
       let country = null;
@@ -44,26 +44,16 @@ export default async function handler(req, res) {
       if (locality) {
         const parts = locality.split(',').map(part => part.trim()).filter(Boolean);
         
-        // Assuming format is "City/Suburb, State, Country" (or just "City, State")
-        if (parts.length >= 1) {
-          city_suburb = parts[0];
-        }
-        if (parts.length >= 2) {
-          state = parts[1];
-        }
-        // If there are 3 parts, the last one is likely the country
-        if (parts.length >= 3) {
-          country = parts[parts.length - 1];
-        } else if (parts.length === 2 && parts[1].length > 3) {
-          // Heuristic: If only two parts, and the second is long (e.g., "Texas"), treat as state, country is unknown/null
-        }
+        if (parts.length >= 1) city_suburb = parts[0];
+        if (parts.length >= 2) state = parts[1];
+        if (parts.length >= 3) country = parts[parts.length - 1];
       }
       // --- END ADDED LOGIC FOR GEOGRAPHY ---
 
       const priceDisplay = getText("h3.text-xl") || null;
       const priceValue = priceDisplay ? Number(priceDisplay.replace(/[^0-9.-]+/g, "")) : null;
 
-      // Status Capture Logic (from previous update)
+      // Status Capture Logic
       let status = getText('turbo-frame[id^="portal_property_status"] div.h5') || null;
       
       const details = {};
@@ -85,7 +75,27 @@ export default async function handler(req, res) {
       const features = Array.from(document.querySelectorAll("ul.inline-flex li")).map(li => li.innerText.trim());
 
       const description = document.querySelector(".lexxy-content")?.innerText.trim() || null;
+      
+      // ------------------------------------------------------------------
+      // --- CAPTURE IMAGE AND PDF URLS (New/Updated Logic) ---
+      // ------------------------------------------------------------------
+      
+      // 1. Floor Plan Image URL (Existing, but kept separate for clarity)
       const floorplanImg = document.querySelector("#floorplan img")?.src || null;
+
+      // 2. Header / Gallery Images (Common selectors used - adjust if needed)
+      // This attempts to find image URLs in common gallery/slider elements.
+      const imageGallery = Array.from(document.querySelectorAll('.slick-slide img, .gallery-item img, .property-gallery img'))
+          .map(img => img.src)
+          .filter(src => src && !src.includes('default-placeholder') && !src.includes('map'));
+
+      // 3. PDF Attachment Link
+      // Looks for a link ending in .pdf OR a link with "Brochure" or "Download" in its title/text
+      const pdfAttachment = document.querySelector('a[href$=".pdf"], a[title*="Brochure"], a[title*="Download"]') 
+          ? document.querySelector('a[href$=".pdf"], a[title*="Brochure"], a[title*="Download"]').href
+          : null;
+      // ------------------------------------------------------------------
+
 
       const extractListByHeading = (headingText) => {
         const headings = Array.from(document.querySelectorAll("h2, h3, h4"));
@@ -123,10 +133,10 @@ export default async function handler(req, res) {
       return {
         title,
         address,
-        locality, // Keep the raw combined locality for reference
-        city_suburb, // New field
-        state,       // New field
-        country,     // New field
+        locality, 
+        city_suburb,
+        state,
+        country,
         priceDisplay,
         priceValue,
         status: finalStatus,
@@ -134,8 +144,11 @@ export default async function handler(req, res) {
         details,
         description,
         inclusions,
-        floorplanImg,
-        locationData
+        locationData,
+        // --- RETURNED FILE URLS ---
+        gallery_images: imageGallery,
+        floorplan_image: floorplanImg,
+        pdf_link: pdfAttachment
       };
     });
 
