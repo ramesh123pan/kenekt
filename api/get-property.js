@@ -41,8 +41,8 @@ export default async function handler(req, res) {
       let state = null;
       let country = null;
 
-      if (locality) {
-        const parts = locality.split(',').map(part => part.trim()).filter(Boolean);
+      if (title) {
+        const parts = title.split(',').map(part => part.trim()).filter(Boolean);
         
         if (parts.length >= 1) city_suburb = parts[0]; // e.g., ROCHEDALE
         if (parts.length >= 2) state = parts[1];       // e.g., QLD
